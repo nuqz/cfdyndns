@@ -67,6 +67,7 @@ eternity:
 				}
 
 				for _, recn := range records {
+					found := false
 					for _, rec := range dns {
 						log.Println(rec.Name)
 						if rec.Name == recn {
@@ -76,7 +77,17 @@ eternity:
 							}
 							log.Printf("Zone: %s\tRecord: %s\tIP: %s",
 								zone, rec.Name, rec.Content)
+							found = true
 							break
+						}
+					}
+					if !found {
+						if _, err := api.CreateDNSRecord(id, cloudflare.DNSRecord{
+							Type:    "A",
+							Name:    recn,
+							Content: ip,
+						}); err != nil {
+							log.Println(err)
 						}
 					}
 				}
