@@ -69,7 +69,6 @@ eternity:
 				for _, recn := range records {
 					found := false
 					for _, rec := range dns {
-						log.Println(rec.Name)
 						if rec.Name == recn {
 							rec.Content = ip
 							if err = api.UpdateDNSRecord(id, rec.ID, rec); err != nil {
