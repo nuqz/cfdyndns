@@ -16,17 +16,17 @@ import (
 )
 
 var (
+	api      *cloudflare.API
+	cfg      map[string][]string
+	err      error
+	quit     = make(chan os.Signal, 1)
 	cfgPath  = flag.String("config", "config.toml", "Path to config.toml file")
 	interval = flag.Duration("interval", time.Minute, "Time interval between updates")
-	quit     = make(chan os.Signal)
-	cfg      map[string][]string
-	api      *cloudflare.API
-	err      error
-	ticker   *time.Ticker
 )
 
 func init() {
 	flag.Parse()
+	log.SetFlags(log.Lshortfile | log.Ltime)
 
 	_, err = toml.DecodeFile(*cfgPath, &cfg)
 	if err != nil {
@@ -38,61 +38,54 @@ func init() {
 		log.Fatal(err)
 	}
 
-	ticker = time.NewTicker(*interval)
-
 	signal.Notify(quit, syscall.SIGINT)
-
-	log.SetPrefix("[CF DDNS] ")
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
 
 func main() {
-	go func() {
-	eternity:
-		for {
-			select {
-			case <-ticker.C:
-				ip, err := getExternalIP()
+	t := time.Tick(*interval)
+eternity:
+	for {
+		select {
+		case <-t:
+			ip, err := getExternalIP()
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			for zone, records := range cfg {
+				id, err := api.ZoneIDByName(zone)
 				if err != nil {
 					log.Println(err)
 					continue
 				}
 
-				for zone, records := range cfg {
-					id, err := api.ZoneIDByName(zone)
-					if err != nil {
-						log.Println(err)
-						continue
-					}
+				dns, err := api.DNSRecords(id, cloudflare.DNSRecord{})
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 
-					dns, err := api.DNSRecords(id, cloudflare.DNSRecord{})
-					if err != nil {
-						log.Println(err)
-						continue
-					}
-
-					for _, recn := range records {
-						for _, rec := range dns {
-							if rec.Name == recn {
-								rec.Content = ip
-								if err = api.UpdateDNSRecord(id, rec.ID, rec); err != nil {
-									log.Println(err)
-									continue
-								}
-								log.Printf("Zone: %s\tRecord: %s\tIP: %s",
-									zone, rec.Name, rec.Content)
+				for _, recn := range records {
+					for _, rec := range dns {
+						log.Println(rec.Name)
+						if rec.Name == recn {
+							rec.Content = ip
+							if err = api.UpdateDNSRecord(id, rec.ID, rec); err != nil {
+								log.Println(err)
 							}
+							log.Printf("Zone: %s\tRecord: %s\tIP: %s",
+								zone, rec.Name, rec.Content)
+							break
 						}
 					}
-
 				}
-			case <-quit:
-				break eternity
+
 			}
+		case <-quit:
+			break eternity
 		}
-	}()
-	<-quit
-	ticker.Stop()
+	}
 }
 
 func getExternalIP() (string, error) {
