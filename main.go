@@ -26,7 +26,7 @@ var (
 
 func init() {
 	flag.Parse()
-	log.SetFlags(log.Lshortfile | log.Ltime)
+	log.SetFlags(log.Lshortfile)
 
 	_, err = toml.DecodeFile(*cfgPath, &cfg)
 	if err != nil {
