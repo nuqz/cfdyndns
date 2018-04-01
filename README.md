@@ -23,3 +23,16 @@ Example:
 ```
 $ CF_API_EMAIL=account@gmail.com CF_API_KEY=secret-key ./cfdyndns -interval 30s -config ~/dns.toml
 ```
+
+or
+
+```
+$ make local
+```
+
+## Install as systemd service
+
+```
+$ make install_service
+```
+
