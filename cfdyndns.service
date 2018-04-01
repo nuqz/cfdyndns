@@ -1,0 +1,20 @@
+[Unit]
+Description=CloudFlare dynamic DNS client
+After=network.target
+
+[Install]
+WantedBy=multi-user.target 
+
+[Service]
+Type=simple
+WorkingDirectory=/tmp
+User=1000
+Group=1000
+
+Environment=CF_API_EMAIL=
+Environment=CF_API_KEY=
+Environment=CF_CFG_PATH=config.toml
+
+ExecStart=.../go/bin/cfdyndns -config ${CF_CFG_PATH}
+Restart=always
+RestartSec=5s
